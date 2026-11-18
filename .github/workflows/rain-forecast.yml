@@ -1,0 +1,30 @@
+name: 企业微信降雨提醒
+
+on:
+  schedule:
+    - cron: '0 23 * * *'
+    - cron: '0 11 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  forecast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: 检查降雨并推送
+        env:
+          WECOM_WEBHOOK_URL: ${{ secrets.WECOM_WEBHOOK_URL }}
+          EVENT_NAME: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+        run: |
+          if [ "$EVENT_NAME" = workflow_dispatch ]; then
+            python3 rain_forecast.py --test
+          elif [ "$SCHEDULE" = '0 23 * * *' ]; then
+            python3 rain_forecast.py --hour 7
+          else
+            python3 rain_forecast.py --hour 19
+          fi
