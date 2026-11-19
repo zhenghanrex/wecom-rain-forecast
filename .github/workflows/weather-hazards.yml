@@ -1,0 +1,41 @@
+name: 企业微信极端天气提醒
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wecom-weather-hazards
+
+jobs:
+  hazards:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache/restore@v4
+        if: github.event_name == 'schedule'
+        with:
+          path: .hazard-state
+          key: wecom-hazards-v1-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            wecom-hazards-v1-
+      - name: 检查官方预警和台风路径
+        env:
+          WECOM_WEBHOOK_URL: ${{ secrets.WECOM_WEBHOOK_URL }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          if [ "$EVENT_NAME" = workflow_dispatch ]; then
+            python3 weather_hazards.py --preview
+          else
+            python3 weather_hazards.py
+          fi
+      - uses: actions/cache/save@v4
+        if: always() && github.event_name == 'schedule' && hashFiles('.hazard-state/sent.json') != ''
+        with:
+          path: .hazard-state
+          key: wecom-hazards-v1-${{ github.run_id }}-${{ github.run_attempt }}
